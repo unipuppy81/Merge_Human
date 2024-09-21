@@ -7,7 +7,10 @@ public class Item : MonoBehaviour
     private Grid grid;                      // 그리드 참조
     private int currentRow, currentCol;      // 현재 위치한 셀 좌표
     private Vector3 originalPosition;        // 드래그 시작 시 원래 위치
+
     public int itemcode = 1;
+    public bool isGenerate = false;
+
     // GridObject 초기화
     public void Initialize(Grid grid, int row, int col, Vector3 startPosition, int icode)
     {
@@ -18,14 +21,6 @@ public class Item : MonoBehaviour
         this.itemcode = icode;
     }
 
-    // 오브젝트를 드래그하는 중
-    private void OnMouseDrag()
-    {
-        Vector3 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mousePosition.z = 0; // Z 좌표 고정
-        transform.position = mousePosition;
-    }
-
     // 드래그 시작
     private void OnMouseDown()
     {
@@ -33,11 +28,22 @@ public class Item : MonoBehaviour
         grid.ClearCell(currentRow, currentCol); // 현재 셀 비우기
     }
 
+    // 오브젝트를 드래그하는 중
+    private void OnMouseDrag()
+    {
+        Vector3 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mousePosition.z = 0; // Z 좌표 고정
+        transform.position = mousePosition;
+        
+    }
+
     // 드래그 종료
     private void OnMouseUp()
     {
         Vector2Int closestCell = grid.FindClosestCell(transform.position);
-        Debug.Log(transform.position);
+
+        Vector2Int closestEmptyCell = grid.FindClosestEmptyCell(transform.position, currentRow, currentCol);
+
         // 가까운 셀이 비어있으면 그쪽으로 이동, 아니면 원래 위치로 복귀
         if (transform.position.x >= grid.startPosition.x && transform.position.x <= grid.startPosition.x + grid.columns * grid.cellSize &&
             transform.position.y <= grid.startPosition.y && transform.position.y >= grid.startPosition.y - grid.rows * grid.cellSize)
@@ -49,7 +55,7 @@ public class Item : MonoBehaviour
             {
                 MergeWith(otherObject);
             }
-            else if (grid.IsCellEmpty(closestCell.x, closestCell.y))
+            else if (grid.IsCellEmpty(closestCell.x, closestCell.y) && !grid.isExists[closestCell.x, closestCell.y])
             {
                 transform.position = grid.GetCellCenter(closestCell.x, closestCell.y); // 가까운 셀로 이동
                 grid.PlaceObjectAt(closestCell.x, closestCell.y, gameObject); // 셀 채우기
@@ -60,6 +66,17 @@ public class Item : MonoBehaviour
             {
                 transform.position = originalPosition; // 원래 위치로 복귀
                 grid.PlaceObjectAt(currentRow, currentCol, gameObject); // 다시 원래 셀로
+            }
+
+            if (isGenerate && originalPosition == grid.GetCellCenter(closestCell.x, closestCell.y))
+            {
+                grid.GenerateObject(closestEmptyCell.x, closestEmptyCell.y, gameObject); // 그 위치에 새 오브젝트 생성
+                Debug.Log(closestEmptyCell);
+                return; // 오브젝트 생성 후 종료
+            }
+            else
+            {
+                Debug.Log("오류");
             }
         }
         else
@@ -94,10 +111,6 @@ public class Item : MonoBehaviour
         Destroy(gameObject); // 현재 오브젝트 삭제
     }
 
-    private bool IsInsideGrid(Vector2Int cell)
-    {
-        return cell.x >= 0 && cell.x < grid.rows && cell.y >= 0 && cell.y < grid.columns;
-    }
     // Start is called before the first frame update
     void Start()
     {
@@ -107,6 +120,6 @@ public class Item : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+
     }
 }
